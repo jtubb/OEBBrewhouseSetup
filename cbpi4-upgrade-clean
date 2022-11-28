@@ -1,0 +1,78 @@
+#!/bin/bash
+
+if [ "$EUID" -ne 0 ]
+  then echo "Please run as root"
+  exit
+fi
+
+current_time=$(date "+%m.%d.%Y-%H:%M:%S")
+
+service craftbeerpi stop
+apt-get update
+apt-get -y install zip python3 python3-pip python3-rpi.gpio rpi-eeprom safe-rm
+
+apt -y autoremove && sudo apt -y clean && apt -y autoclean
+
+sed -i 's/#SystemMaxUse=/SystemMaxUse=50M/' /etc/systemd/journald.conf
+
+systemctl restart systemd-journald.service
+
+cd /home/pi/
+mkdir cbpibackup
+
+cp -r config "cbpibackup/config".$current_time
+
+pip3 install --upgrade https://github.com/avollkopf/craftbeerpi4/archive/master.zip
+
+## Pull down and customize cbpi4gui
+mkdir /tmp/cbpi4gui-staging
+pip3 install --no-cache-dir --upgrade https://github.com/avollkopf/craftbeerpi4-ui/archive/main.zip
+wget -P /tmp/cbpi4gui-staging/ https://oebrewing.com/wp-content/uploads/2020/10/cropped-seal-2-1-192x192.png
+cp /tmp/cbpi4gui-staging/cropped-seal-2-1-192x192.png /usr/local/lib/python3.9/dist-packages/cbpi4gui/build/static/media/cbpi.f1a4ae59.png
+cp /tmp/cbpi4gui-staging/cropped-seal-2-1-192x192.png /usr/local/lib/python3.9/dist-packages/cbpi4gui/build/static/media/cbpi_no_border.5446caa7.png
+cp /tmp/cbpi4gui-staging/cropped-seal-2-1-192x192.png /usr/local/lib/python3.9/dist-packages/cbpi4gui/build/static/media/cbpi_pattern.ec6e8cb2.png
+cp /tmp/cbpi4gui-staging/cropped-seal-2-1-192x192.png /usr/local/lib/python3.9/dist-packages/cbpi4gui/build/favicon.ico
+cp /tmp/cbpi4gui-staging/cropped-seal-2-1-192x192.png /usr/local/lib/python3.9/dist-packages/cbpi4gui/build/logo192.png
+cp /tmp/cbpi4gui-staging/cropped-seal-2-1-192x192.png /usr/local/lib/python3.9/dist-packages/cbpi4gui/build/logo512.png
+cp /home/pi/logo.svg /usr/local/lib/python3.9/dist-packages/cbpi4gui/build/static/media/CBPi_logo.7d1627f1.svg
+sed -i 's\CraftBeerPi 4.0\Over Engineered Brewing - '"${HOSTNAME}"'\' /usr/local/lib/python3.9/dist-packages/cbpi4gui/build/static/js/main.0a739734.chunk.js
+sed -i 's\CraftBeerPi 4.0\'"${HOSTNAME}"'\' /usr/local/lib/python3.9/dist-packages/cbpi4gui/build/index.html
+
+rm -r /tmp/cbpi4gui-staging
+
+cbpi setup
+
+pip3 install --no-cache-dir --upgrade https://github.com/avollkopf/cbpi4-buzzer/archive/main.zip
+pip3 install --no-cache-dir --upgrade https://github.com/avollkopf/cbpi4-RecipeImport/archive/main.zip
+pip3 install --no-cache-dir --upgrade https://github.com/avollkopf/cbpi4-system/archive/main.zip
+pip3 install --no-cache-dir --upgrade https://github.com/avollkopf/cbpi4-GPIODependentActor/archive/main.zip
+pip3 install --no-cache-dir --upgrade https://github.com/avollkopf/cbpi4-DependentActor/archive/main.zip
+pip3 install --no-cache-dir --upgrade https://github.com/avollkopf/cbpi4-GroupedActor/archive/main.zip
+pip3 install --no-cache-dir --upgrade https://github.com/avollkopf/cbpi4-KettleSensor/archive/main.zip
+pip3 install --no-cache-dir --upgrade https://github.com/jtubb/cbpi4-pca9685/archive/main.zip
+pip3 install --no-cache-dir --upgrade https://github.com/jtubb/cbpi4-ads1x15/archive/main.zip
+pip3 install --no-cache-dir --upgrade https://github.com/jtubb/cbpi4-PreheatStep/archive/main.zip
+pip3 install --no-cache-dir --upgrade https://github.com/hurra/cbpi4-http-actor/archive/main.zip
+pip3 install --no-cache-dir --upgrade https://github.com/avollkopf/cbpi4-PIDBoil/archive/main.zip
+pip3 install --no-cache-dir --upgrade https://github.com/avollkopf/cbpi4-PIDHerms/archive/main.zip
+pip3 install --no-cache-dir --upgrade https://github.com/avollkopf/cbpi4-BLEHydrom/archive/main.zip
+
+service craftbeerpi start
+
+git clone https://github.com/foundObjects/zram-swap.git
+cd zram-swap
+git pull
+./install.sh
+systemctl start zram-swap.service
+
+sed -zi '/gpu_mem=320/!s/$/\ngpu_mem=320/' /boot/config.txt
+sed -zi '/dtoverlay=pi3-disable-bt/!s/$/\ndtoverlay=pi3-disable-bt/' /boot/config.txt
+
+cp /usr/share/systemd/tmp.mount /etc/systemd/system/tmp.mount
+systemctl enable tmp.mount
+systemctl start tmp.mount
+
+systemctl disable apt-daily.service
+systemctl disable apt-daily.timer
+systemctl disable apt-daily-upgrade.timer
+systemctl disable apt-daily-upgrade.service
