@@ -22,7 +22,7 @@ mkdir cbpibackup
 
 cp -r config "cbpibackup/config".$current_time
 
-pip3 install --upgrade https://github.com/avollkopf/craftbeerpi4/archive/master.zip
+pip3 install --no-cache-dir --upgrade https://github.com/avollkopf/craftbeerpi4/archive/master.zip
 
 ## Pull down and customize cbpi4gui
 mkdir /tmp/cbpi4gui-staging
@@ -56,6 +56,7 @@ pip3 install --no-cache-dir --upgrade https://github.com/hurra/cbpi4-http-actor/
 pip3 install --no-cache-dir --upgrade https://github.com/avollkopf/cbpi4-PIDBoil/archive/main.zip
 pip3 install --no-cache-dir --upgrade https://github.com/avollkopf/cbpi4-PIDHerms/archive/main.zip
 pip3 install --no-cache-dir --upgrade https://github.com/avollkopf/cbpi4-BLEHydrom/archive/main.zip
+pip3 install --no-cache-dir --upgrade https://github.com/pascal1404/cbpi4-TelegramPushNotifications/archive/refs/heads/main.zip
 
 service craftbeerpi start
 
